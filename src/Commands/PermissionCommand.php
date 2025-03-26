@@ -102,7 +102,7 @@ class PermissionCommand extends Command
             $this->line("- Import from YAML File: $file");
             $this->newLine();
 
-            if ($non_interactive || $this->confirm('Do you want to import permissions from file to database (connection: $connection)?', true))
+            if ($non_interactive || $this->confirm("Do you want to import permissions from file to database (connection: $connection)?", true))
             {
                 $this->handleSync($file, false, $connection);
             }
@@ -284,9 +284,14 @@ class PermissionCommand extends Command
         $syncer = new PermissionYamlSyncerService();
         $syncer->syncFromYaml($yaml_file_with_permissions, $dry_run, $connection);
 
-        if ($dry_run) {
+        if ($dry_run)
+        {
             $this->info('🔎 Simulation completed. No changes were made.');
-        } else {
+        }
+        else
+        {
+            meanifyPermissions()->refreshCaches();
+
             $this->info('✅ Permissions synchronized with the database.');
         }
     }
