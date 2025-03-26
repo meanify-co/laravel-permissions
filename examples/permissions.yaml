@@ -1,0 +1,25 @@
+# Example for permissions.yaml
+
+admin.users.view:
+  code: admin.users.view
+  label: Show users
+  group: Users
+  class: App\Http\Controllers\UserController
+  method: export
+  apply: true
+
+admin.users.edit:
+  code: admin.users.edit
+  label: Update Users
+  group: Users
+  class: App\Http\Controllers\UserController
+  method: export
+  apply: true
+
+admin.users.export:
+  code: admin.users.export
+  label: Export user data
+  group: Users
+  class: App\Http\Controllers\UserController
+  method: export
+  apply: true
