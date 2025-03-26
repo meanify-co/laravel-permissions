@@ -10,6 +10,7 @@ class Permission
     public function __construct(
         protected ?string $code = null,
         protected ?string $group = null,
+        protected ?string $label = null,
         protected bool $apply = true,
         protected ?string $class = null,
         protected ?string $method = null,
@@ -23,6 +24,11 @@ class Permission
     public function group(): ?string
     {
         return $this->group;
+    }
+
+    public function label(): ?string
+    {
+        return $this->label;
     }
 
     public function apply(): bool
