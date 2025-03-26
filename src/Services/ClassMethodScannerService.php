@@ -2,9 +2,8 @@
 
 namespace Meanify\LaravelPermissions\Services;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Symfony\Component\Finder\Finder;
-use Illuminate\Filesystem\Filesystem;
 use ReflectionClass;
 use ReflectionMethod;
 use Meanify\LaravelPermissions\Attributes\Permission as PermissionAttribute;
@@ -18,78 +17,98 @@ class ClassMethodScannerService
      */
     public function scan(string $base_path, string $prefix = ''): array
     {
+        $php_files   = File::allFiles($base_path);
         $permissions = [];
-        $files = (new Finder)->files()->in($base_path)->name('*.php')->sortByName();
 
-        foreach ($files as $file) {
+        foreach ($php_files as $file)
+        {
             $relative_path = Str::after($file->getPathname(), base_path() . DIRECTORY_SEPARATOR);
             $class = $this->getClassFromFile($relative_path);
 
-            if ($class && class_exists($class)) {
+            if (!$class || !class_exists($class))
+            {
+                continue;
+            }
+
+            try
+            {
                 $reflection = new ReflectionClass($class);
                 $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
+            }
+            catch (\Throwable $e)
+            {
+                continue;
+            }
 
-                foreach ($methods as $method) {
-                    if ($method->class !== $class || $method->name === '__construct') {
-                        continue;
-                    }
+            foreach ($methods as $method)
+            {
+                if ($method->class !== $class)
+                {
+                    continue;
+                }
 
-                    $method_name = $method->name;
-                    $default_group = class_basename($class);
-                    $default_code = $prefix ? "$prefix.$default_group.$method_name" : "$default_group.$method_name";
+                $method_name = $method->getName();
 
-                    $apply = true;
+                if (Str::startsWith($method_name, '__'))
+                {
+                    continue;
+                }
+
+                $default_code  = ($prefix ? "$prefix." : '') . $method_name;
+                $default_group = class_basename($class);
+                $label         = Str::headline($method_name);
+                $apply         = true;
+
+                try {
                     $attributes = $method->getAttributes(PermissionAttribute::class);
 
-                    try
+                    if (!empty($attributes))
                     {
-                        $attr = $attributes[0]->newInstance() ?? null;
+                        $attr = $attributes[0]->newInstance();
 
-                        if ($attr)
+                        if (!$attr->apply())
                         {
-                            if (!$attr->apply())
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            $group = $attr->group() ?? $default_group;
-                            $code = $attr->code() ?? $default_code;
-                            $class_name = $attr->class() ?? $class;
-                            $method_ref = $attr->method() ?? $method_name;
-                        }
-                        else
-                        {
-                            $group = $default_group;
-                            $code = $default_code;
-                            $class_name = $class;
-                            $method_ref = $method_name;
-                        }
+                        $code   = $attr->code() ?? $default_code;
+                        $group  = $attr->group() ?? $default_group;
+                        $label  = $attr->label() ?? $label;
+                        $apply  = $attr->apply();
                     }
-                    catch (\Exception $e)
+                    else
                     {
-
+                        $code  = $default_code;
                         $group = $default_group;
-                        $code = $default_code;
-                        $class_name = $class;
-                        $method_ref = $method_name;
                     }
-
-                    $permissions[$code] = [
-                        'code' => $code,
-                        'label' => Str::headline($method_name),
-                        'group' => $group,
-                        'class' => $class_name,
-                        'method' => $method_ref,
-                        'apply' => $apply,
-                    ];
                 }
+                catch (\Throwable $e)
+                {
+                    $code  = $default_code;
+                    $group = $default_group;
+                }
+
+                if (isset($permissions[$code]))
+                {
+                    echo "⚠️  Duplicate permission code '{$code}' found in {$class}::{$method_name}. Only the first occurrence will be kept.\n";
+                    continue;
+                }
+
+                $permissions[$code] = [
+                    'code'   => $code,
+                    'label'  => $label,
+                    'group'  => $group,
+                    'class'  => $class,
+                    'method' => $method_name,
+                    'apply'  => $apply,
+                ];
             }
         }
 
         ksort($permissions);
-
         return $permissions;
     }
+
 
     /**
      * @param string $relative_path
@@ -99,14 +118,17 @@ class ClassMethodScannerService
     {
         $composer = json_decode(file_get_contents(base_path('composer.json')), true);
 
-        if (!isset($composer['autoload']['psr-4'])) {
+        if (!isset($composer['autoload']['psr-4']))
+        {
             return null;
         }
 
-        foreach ($composer['autoload']['psr-4'] as $namespace => $path) {
+        foreach ($composer['autoload']['psr-4'] as $namespace => $path)
+        {
             $base_path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($path, '/'));
 
-            if (Str::startsWith($relative_path, $base_path)) {
+            if (Str::startsWith($relative_path, $base_path))
+            {
                 $sub_path = Str::after($relative_path, $base_path);
                 $sub_path = str_replace(['/', '.php'], ['\\', ''], $sub_path);
                 return rtrim($namespace, '\\') . $sub_path;

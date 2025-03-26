@@ -15,7 +15,7 @@ A PHP library to handle permissions in Laravel, designed by [Meanify](https://me
 Install the package via Composer:
 
 ```bash
-composer require meanify-co/laravel-permissions
+composer require meanify-co/laravel-permissions:dev-master
 ```
 
 ---

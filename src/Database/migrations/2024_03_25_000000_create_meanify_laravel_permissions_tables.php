@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('class')->nullable();
             $table->string('method')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('roles', function (Blueprint $table) {
@@ -27,6 +28,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('description')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('roles_permissions', function (Blueprint $table) {
