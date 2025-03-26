@@ -6,13 +6,13 @@
 
 # Laravel Permissions
 
-A PHP library to handle permissions in Laravel, designed by [Meanify](https://meanify.co) to be **decoupled from Eloquent**, **cache-friendly** and **scalable**.
+A PHP library to handle permissions in Laravel, designed by [Meanify](https://meanify.co) to be cache-friendly, scalable and decoupled from Eloquent models.
 
 ---
 
-## 📦 Installation
+## Installation
 
-Install via Composer:
+Install the package via Composer:
 
 ```bash
 composer require meanify-co/laravel-permissions
@@ -20,9 +20,7 @@ composer require meanify-co/laravel-permissions
 
 ---
 
-## 🔧 Publishing Files
-
-Publish the configuration, migrations, models and middleware stub:
+## Publishing Configuration & Migrations
 
 ```bash
 php artisan vendor:publish --tag=meanify-permissions-config
@@ -31,7 +29,7 @@ php artisan vendor:publish --tag=meanify-laravel-permissions-models
 php artisan vendor:publish --tag=meanify-laravel-permissions-middleware
 ```
 
-Then run:
+Run the migrations:
 
 ```bash
 php artisan migrate
@@ -39,178 +37,108 @@ php artisan migrate
 
 ---
 
-## ⚙️ Permission Command
+## Command Usage
 
 ```bash
 php artisan meanify:permissions
 ```
 
-### Options:
+The command supports two actions:
 
-| Option             | Description                                                              |
-|--------------------|--------------------------------------------------------------------------|
-| `--sync`           | Synchronize YAML with the database                                       |
-| `--path=`          | Path to scan for class methods (default: `app/Http/Controllers`)         |
-| `--prefix=`        | Optional prefix to prepend to permission codes                           |
-| `--file=`          | Path to the YAML file (default: `permissions.yaml`)                      |
-| `--dry-run`        | Simulates synchronization without altering the database                  |
-| `--connection=`    | Database connection to use when syncing                                  |
-| `--non-interactive`| Skips prompts and uses provided or default values                        |
+- `import` – Import permissions from a YAML file into the database
+- `generate` – Scan classes and generate a YAML file, with optional database sync
+
+You will be prompted for required values if not passed as options.
+
+### Options
+
+| Option            | Description                                                                 |
+|-------------------|-----------------------------------------------------------------------------|
+| `--action`        | `"import"` or `"generate"`                                                  |
+| `--file`          | Path to the YAML file to use                                                |
+| `--path`          | Base path to scan for permission generation (for `generate`)                |
+| `--prefix`        | Prefix for permission codes (for `generate`)                                |
+| `--sync`          | Whether to sync the generated permissions to the database                   |
+| `--dry-run`       | Only simulate the sync (no DB changes)                                      |
+| `--connection`    | Database connection to use                                                  |
+| `--non-interactive` | Skip all confirmation prompts                                             |
 
 ---
 
-## ✅ Attributes Support (PHP 8+)
+## Attributes
 
-Define permissions directly in your classes:
+You can add permissions using PHP 8+ attributes:
 
 ```php
 use Meanify\LaravelPermissions\Attributes\Permission;
 
-class EquipmentLocator
-{
-    #[Permission(code: 'admin.equipment.view', group: 'Equipment', label: 'View Equipment')]
-    public function view() {
-        //
-    }
-
-    #[Permission(apply: false)]
-    public function internalUtility() {
-        //
-    }
+#[Permission(code: 'admin.users.view', group: 'Users', label: 'View Users')]
+public function index() {
+    //
 }
 ```
 
-If no attributes are found, permission codes are generated using:
-```
+If no attribute is provided, it falls back to:
+
+```text
 {prefix}.{ClassName}.{methodName}
 ```
 
 ---
 
-## 🧠 Global Helper: `meanifyPermissions()`
+## Global Helper
 
-Use `meanifyPermissions()` for fluent access to all permission features.
-
-### Examples
+You can use the global helper `meanifyPermissions()` for checking permissions.
 
 ```php
-// Check if a user has a permission
-meanifyPermissions()->forUser(10)->has('admin.users.view');
+// Check if user has permission
+meanifyPermissions()->forUser(1)->has('admin.users.create');
 
-// Check if a role has a permission
-meanifyPermissions()->forRole(2)->has('admin.reports.generate');
+// Check if role has permission
+meanifyPermissions()->forRole(3)->has('admin.reports.view');
 
-// Get all permissions and roles (only when not scoped)
-meanifyPermissions()->getAllPermissions();
-meanifyPermissions()->getAllRoles();
+// Get permissions for a user
+meanifyPermissions()->forUser(1)->getUserPermissions();
 
-// Get permissions grouped by class and method
-meanifyPermissions()->getPermissionsByClassMethod();
+// Get permissions for a class method
+meanifyPermissions()->getClassMethodPermissionCode(ClassName::class, 'methodName');
 
-// Get permission code for a given class and method
-meanifyPermissions()->getClassMethodPermissionCode(MyController::class, 'store');
+// Refresh user or role permission cache
+meanifyPermissions()->forUser(1)->refreshCache();
+meanifyPermissions()->forRole(3)->refreshCache();
 
-// Clear or refresh caches
+// Clear base caches (roles, permissions, class maps)
 meanifyPermissions()->clearCache();
-meanifyPermissions()->refreshCaches();
 ```
 
 ---
 
-## 🧱 Internal Structure
+## Middleware
 
-The package separates logic using **Handlers**:
-
-- `UserHandler`: `forUser(...)->has()`, `getUserPermissions()`, `refreshCache()`
-- `RoleHandler`: `forRole(...)->has()`, `getRolePermissions()`, `refreshCache()`
-- `PermissionHandler`: `getAllPermissions()`, `getAllRoles()`, `getPermissionsByClassMethod()`, `getClassMethodPermissionCode()`
-
-This makes the system scalable and flexible for distributed environments.
-
----
-
-## 🔐 Authorization Middleware
-
-The package provides a ready-to-use middleware:
+You can use the included middleware to auto-check permissions based on class/method mapping.
 
 ```php
-use Closure;
-
-class MeanifyUserPermission
-{
-    public function handle($request, Closure $next)
-    {
-        $user_id = 1; //TODO: set user_id from request
-
-        $target_class  = $request->route()->getControllerClass();
-        $target_method = $request->route()->getActionMethod();
-
-        $permission = meanifyPermissions()->getClassMethodPermissionCode($target_class, $target_method);
-
-        if (!$permission) {
-            abort(500);
-        }
-
-        if (!meanifyPermissions()->forUser($user_id)->has($permission)) {
-            abort(403);
-        }
-
-        return $next($request);
-    }
-}
+// Example
+Route::middleware(['meanify.user.permission'])->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
+});
 ```
 
-Use it in your `Kernel.php` like:
-
-```php
-protected $routeMiddleware = [
-    'meanify.permission' => \App\Http\Middleware\MeanifyUserPermission::class,
-];
-```
+It will check if the current user has permission based on the controller and method.
 
 ---
 
-## 🗂 Published Models
+## Caching Strategy
 
-When running `vendor:publish --tag=meanify-laravel-permissions-models`, the following models will be available in `App\Models`:
+Cached:
 
-- `Permission`
-- `Role`
-- `UserRole`
-- `RolePermission`
-
-These models are optional and follow Eloquent standards, but the package itself works even without them.
+- All permissions
+- All roles
+- Permissions for each user and role
+- Mapped permission codes by `Class::method`
 
 ---
 
-## 🧠 Cache Structure
-
-The system uses the following cache keys:
-
-| Cache Key                                       | Description                              |
-|------------------------------------------------|------------------------------------------|
-| `meanify_laravel_permissions.permissions.all`   | All permissions                          |
-| `meanify_laravel_permissions.roles.all`         | All roles                                |
-| `meanify_laravel_permissions.user_permissions.{user_id}` | Permissions for a given user     |
-| `meanify_laravel_permissions.role_permissions.{role_id}` | Permissions for a given role     |
-| `meanify_laravel_permissions.class_method_map`  | Class::method => [permission_codes]      |
-| `meanify_laravel_permissions.class_method_code.{class}::{method}` | Specific code for a method |
-
-Use `clearCache()` and `refreshCaches()` as needed.
-
----
-
-## 🧪 Testing
-
-You can write tests using `meanifyPermissions()` or by importing the individual handlers:
-
-```php
-$userHandler = new \Meanify\LaravelPermissions\Support\Handlers\UserHandler(1, 'cache', 'file', 720);
-$this->assertTrue($userHandler->has('admin.users.view'));
-```
-
----
-
-## 🧾 License
+## License
 
 MIT © [Meanify Tecnologia LTDA](https://www.meanify.co)
