@@ -13,7 +13,7 @@ use Meanify\LaravelPermissions\Services\PermissionYamlSyncerService;
 class PermissionCommand extends Command
 {
     protected $signature = 'meanify:permissions
-                            {--action : "import" to only import permissions or "generate" to generate and sync with database}
+                            {--action= : "import" to only import permissions or "generate" to generate and sync with database}
                             {--sync : Synchronize YAML with the database (applied to "generate" action)}
                             {--path= : Base path for scanning classes (applied to "generate" action)}
                             {--prefix= : Prefix for permission codes (applied to "generate" action)}
