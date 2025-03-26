@@ -59,14 +59,20 @@ class PermissionCommand extends Command
 
         if($action == self::$ACTION_TO_IMPORT)
         {
-            setImportFile:
-
             $file = $this->option('file');
 
-            if(!$file || !File::exists($file))
+            setImportFile:
+
+            if(!$file)
+            {
+                $file = $this->ask('Type output yaml file with permissions (e.g. storage/temp/permissions.yaml)');
+            }
+
+            if(!File::exists($file))
             {
                 $this->warn('❌ File not entered or file not found.');
                 $this->line('Please type file from base path');
+                $file = null;
 
                 goto setImportFile;
             }
@@ -74,6 +80,7 @@ class PermissionCommand extends Command
             {
                 $this->error('❌ File is not valid yaml.');
                 $this->line('Please type file from base path');
+                $file = null;
 
                 goto setImportFile;
             }
