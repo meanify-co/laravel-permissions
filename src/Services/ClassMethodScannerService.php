@@ -54,12 +54,13 @@ class ClassMethodScannerService
                     continue;
                 }
 
-                $default_code  = ($prefix ? "$prefix." : '') . $method_name;
                 $default_group = class_basename($class);
+                $default_code  = ($prefix ? "$prefix." : '') . $default_group .'.'. $method_name;
                 $label         = Str::headline($method_name);
                 $apply         = true;
 
-                try {
+                try
+                {
                     $attributes = $method->getAttributes(PermissionAttribute::class);
 
                     if (!empty($attributes))

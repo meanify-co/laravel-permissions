@@ -9,6 +9,15 @@ use Symfony\Component\Yaml\Yaml;
 
 class PermissionYamlSyncerService
 {
+    protected static $DEFAULT_ROLE_FOR_ADMIN_USER = 'Admin';
+
+    /**
+     * @param string $file_path
+     * @param bool $dry_run
+     * @param string|null $connection
+     * @return void
+     * @throws \Exception
+     */
     public function syncFromYaml(string $file_path, bool $dry_run = false, ?string $connection = null): void
     {
         if (!File::exists($file_path)) {
@@ -23,7 +32,8 @@ class PermissionYamlSyncerService
         $existing_codes = DB::connection($conn)->table('permissions')->pluck('code')->toArray();
         $permission_ids = [];
 
-        foreach ($permissions as $permission) {
+        foreach ($permissions as $permission)
+        {
 
             $data = [
                 'code'   => $permission['code'],
@@ -36,28 +46,38 @@ class PermissionYamlSyncerService
                 'created_at' => now(),
             ];
 
-            if (!in_array($data['code'], $existing_codes)) {
-                if (!$dry_run) {
+            if (!in_array($data['code'], $existing_codes))
+            {
+                if (!$dry_run)
+                {
                     $id = DB::connection($conn)->table('permissions')->insertGetId($data);
                     $permission_ids[] = $id;
                 }
-            } else {
+            }
+            else
+            {
                 $id = DB::connection($conn)->table('permissions')->where('code', $data['code'])->value('id');
-                if (!$dry_run) {
+
+                if(!$dry_run)
+                {
                     DB::connection($conn)->table('permissions')->where('id', $id)->update($data);
                 }
+
                 $permission_ids[] = $id;
             }
         }
 
-        if (!$dry_run) {
+        if(!$dry_run)
+        {
             $role_id = DB::connection($conn)->table('roles')->updateOrInsert(
-                ['name' => 'Administrator'],
+                ['name' => self::$DEFAULT_ROLE_FOR_ADMIN_USER],
                 ['updated_at' => now(), 'created_at' => now()]
             );
 
-            $role = DB::connection($conn)->table('roles')->where('name', 'Administrator')->first();
-            if ($role) {
+            $role = DB::connection($conn)->table('roles')->where('name', self::$DEFAULT_ROLE_FOR_ADMIN_USER)->first();
+
+            if($role)
+            {
                 $existing = DB::connection($conn)->table('roles_permissions')
                     ->where('role_id', $role->id)
                     ->pluck('permission_id')
@@ -65,7 +85,8 @@ class PermissionYamlSyncerService
 
                 $to_insert = array_diff($permission_ids, $existing);
 
-                foreach ($to_insert as $permission_id) {
+                foreach ($to_insert as $permission_id)
+                {
                     DB::connection($conn)->table('roles_permissions')->insert([
                         'role_id' => $role->id,
                         'permission_id' => $permission_id,

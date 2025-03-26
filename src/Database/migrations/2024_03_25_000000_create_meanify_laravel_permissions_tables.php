@@ -46,6 +46,17 @@ return new class extends Migration
                 $table->timestamps();
             });
         }
+
+
+        //Seed Admin role
+        \Illuminate\Support\Facades\Artisan::call('meanify:permissions', [
+            '--non-interactive'  => true,
+            '--sync'             => true,
+            '--path'             => 'app/Http/Controllers',
+            '--file'             => 'storage/temp/permissions-{datetime}.yaml',
+            '--prefix'           => 'admin',
+            '--connection'       => 'mysql',
+        ]);
     }
 
     /**
