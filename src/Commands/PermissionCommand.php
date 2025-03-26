@@ -13,16 +13,19 @@ use Meanify\LaravelPermissions\Services\PermissionYamlSyncerService;
 class PermissionCommand extends Command
 {
     protected $signature = 'meanify:permissions
-                            {--sync : Synchronize YAML with the database}
-                            {--path= : Base path for scanning classes}
-                            {--prefix= : Prefix for permission codes}
-                            {--file= : Path of the YAML file to be synchronized}
-                            {--dry-run : Simulates synchronization without changing the database}
-                            {--connection= : Database connection to use when syncing}
-                            {--non-interactive : Skips confirmation prompts}';
+                            {--action : "import" to only import permissions or "generate" to generate and sync with database}
+                            {--sync : Synchronize YAML with the database (applied to "generate" action)}
+                            {--path= : Base path for scanning classes (applied to "generate" action)}
+                            {--prefix= : Prefix for permission codes (applied to "generate" action)}
+                            {--dry-run : Simulates synchronization without changing the database (applied to "generate" action)}
+                            {--file= : Path of the YAML file to be synchronized (applied to "import" and "generate" action)}
+                            {--connection= : Database connection to use when synchronizing (applied to "import" and "generate" action)}
+                            {--non-interactive : Skips confirmation prompts (applied to "import" and "generate" action)}';
 
     protected $description = 'Manages permissions based on PHP classes (Locators, Controllers, etc.)';
 
+    protected static $ACTION_TO_IMPORT   = 'import';
+    protected static $ACTION_TO_GENERATE = 'generate';
     protected static $DEFAULT_PATH   = 'app/Http/Controllers';
     protected static $DEFAULT_PREFIX = 'meanify';
     protected static $DEFAULT_FILE   = 'storage/temp/permissions_{datetime}.yaml';
@@ -33,47 +36,91 @@ class PermissionCommand extends Command
      */
     public function handle(): void
     {
-        $path            = $this->resolvePath();
-        $prefix          = $this->resolvePrefix();
-        $file            = str_replace('{datetime}',now()->format('Ymd_His'),$this->resolveOutputFile());
-        $dry_run         = $this->option('dry-run') ?? false;
-        $connection      = $this->resolveConnection();
-        $sync            = $this->option('sync') ?? false;
-        $non_interactive = $this->option('non-interactive') ?? false;
+        $action = $this->option('action');
 
-        $this->line("🔍 Here's a summary of what will be executed:");
-        $this->newLine();
-        $this->line("- Scan path : $path");
-        $this->line("- Prefix: $prefix");
-        $this->line("- Output YAML File: $file");
-
-        if ($dry_run)
+        if($action and !in_array($action, [self::$ACTION_TO_IMPORT, self::$ACTION_TO_GENERATE]))
         {
-            $this->line("- Dry Run enabled: permissions will be generated but NOT synced to the database");
-        }
-        elseif ($sync)
-        {
-            $this->line("- Database will be synchronized (connection: $connection)");
+            abort(500);
         }
 
-        $this->newLine();
-
-        if ($non_interactive || $this->confirm('Proceed with generation permissions?', true))
+        if(!$action)
         {
-            $this->handleGenerate($path, $prefix, $file);
+            $action = $this->choice(
+                'Select action to proceed',
+                [self::$ACTION_TO_IMPORT, self::$ACTION_TO_GENERATE],
+            );
 
-            if ($sync && ! $dry_run)
+            if(!in_array($action, [self::$ACTION_TO_IMPORT, self::$ACTION_TO_GENERATE]))
             {
-                $this->handleSync($file, $dry_run, $connection);
-            }
-            elseif (!$sync && ! $dry_run && ! $non_interactive && $this->confirm("Do you also want to synchronize with the database (connection: $connection)?", true))
-            {
-                $this->handleSync($file, $dry_run, $connection);
+                abort(500);
             }
         }
-        else
+
+
+        if($action == self::$ACTION_TO_IMPORT)
         {
-            $this->line('❌ Command aborted.');
+            $file            = $this->option('file');
+            $connection      = $this->resolveConnection();
+            $non_interactive = $this->option('non-interactive') ?? false;
+
+            $this->line("🔍 Here's a summary of what will be executed:");
+            $this->newLine();
+            $this->line("- Import from YAML File: $file");
+            $this->newLine();
+
+            if ($non_interactive || $this->confirm('Do you want to import permissions from file to database (connection: $connection)?', true))
+            {
+                $this->handleSync($file, false, $connection);
+            }
+            else
+            {
+                $this->line('❌ Command aborted.');
+            }
+        }
+        else if($action == self::$ACTION_TO_GENERATE)
+        {
+            $path            = $this->resolvePath();
+            $prefix          = $this->resolvePrefix();
+            $file            = str_replace('{datetime}',now()->format('Ymd_His'),$this->resolveOutputFile());
+            $dry_run         = $this->option('dry-run') ?? false;
+            $connection      = $this->resolveConnection();
+            $sync            = $this->option('sync') ?? false;
+            $non_interactive = $this->option('non-interactive') ?? false;
+
+            $this->line("🔍 Here's a summary of what will be executed:");
+            $this->newLine();
+            $this->line("- Scan path : $path");
+            $this->line("- Prefix: $prefix");
+            $this->line("- Output YAML File: $file");
+
+            if ($dry_run)
+            {
+                $this->line("- Dry Run enabled: permissions will be generated but NOT synced to the database");
+            }
+            elseif ($sync)
+            {
+                $this->line("- Database will be synchronized (connection: $connection)");
+            }
+
+            $this->newLine();
+
+            if ($non_interactive || $this->confirm('Proceed with generation permissions?', true))
+            {
+                $this->handleGenerate($path, $prefix, $file);
+
+                if ($sync && ! $dry_run)
+                {
+                    $this->handleSync($file, $dry_run, $connection);
+                }
+                elseif (!$sync && ! $dry_run && ! $non_interactive && $this->confirm("Do you also want to synchronize with the database (connection: $connection)?", true))
+                {
+                    $this->handleSync($file, $dry_run, $connection);
+                }
+            }
+            else
+            {
+                $this->line('❌ Command aborted.');
+            }
         }
     }
 
@@ -191,7 +238,7 @@ class PermissionCommand extends Command
      * @return void
      * @throws \Exception
      */
-    protected function handleSync(string $yaml_file_with_permissions, bool $dry_run = false, ?string $connection): void
+    protected function handleSync(string $yaml_file_with_permissions, bool $dry_run = false, ?string $connection = null): void
     {
         $this->info("📄 Reading file: $yaml_file_with_permissions");
 
