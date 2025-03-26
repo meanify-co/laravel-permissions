@@ -52,31 +52,17 @@ class PermissionHandler
     /**
      * @return array
      */
-    public function getPermissionsByClassMethod(): array
+    public function getClassMethodPermissionCode(): array
     {
         return Cache::store($this->cache_store)->remember(
             self::PREFIX . '.class_method_map',
             $this->ttl * 60,
-            function () {
-                $permissions = DB::connection($this->getConnection())->table('permissions')
+            function ()
+            {
+                return  DB::connection($this->getConnection())->table('permissions')
                     ->select('code', 'class', 'method')
                     ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
-                    ->get();
-
-                $map = [];
-
-                foreach ($permissions as $perm) {
-                    $key = "{$perm->class}::{$perm->method}";
-                    if (!isset($map[$key])) {
-                        $map[$key] = [];
-                    }
-
-                    if (!in_array($perm->code, $map[$key])) {
-                        $map[$key][] = $perm->code;
-                    }
-                }
-
-                return $map;
+                    ->first();
             }
         );
     }
