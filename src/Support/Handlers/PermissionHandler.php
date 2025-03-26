@@ -50,18 +50,23 @@ class PermissionHandler
     }
 
     /**
+     * @param string $class
+     * @param string $method
      * @return mixed
      */
-    public function getClassMethodPermissionCode(): mixed
+    public function getClassMethodPermissionCode(string $class, string $method): mixed
     {
+        $cache_key = self::PREFIX . ".class_method_code.{$class}::{$method}";
+
         return Cache::store($this->cache_store)->remember(
-            self::PREFIX . '.class_method_map',
+            $cache_key,
             $this->ttl * 60,
-            function ()
-            {
-                return  DB::connection($this->getConnection())->table('permissions')
-                    ->select('code', 'class', 'method')
+            function () use ($class, $method) {
+                return DB::connection($this->getConnection())
+                    ->table('permissions')
                     ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
+                    ->where('class', $class)
+                    ->where('method', $method)
                     ->first();
             }
         );
@@ -80,6 +85,7 @@ class PermissionHandler
      */
     public function clearBaseCache(): void
     {
+        Cache::store($this->cache_store)->forget(self::PREFIX . '.class_method_map');
         Cache::store($this->cache_store)->forget(self::PREFIX . '.permissions.all');
         Cache::store($this->cache_store)->forget(self::PREFIX . '.roles.all');
     }

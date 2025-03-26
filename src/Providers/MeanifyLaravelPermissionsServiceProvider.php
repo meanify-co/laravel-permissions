@@ -17,6 +17,11 @@ class MeanifyLaravelPermissionsServiceProvider extends ServiceProvider
             require_once __DIR__ . '/../Helpers/boot.php';
         }
 
+        //Middleware
+        $this->publishes([
+            __DIR__ . '/../../src/Middleware/MeanifyUserPermission.php' => app_path('Http/Middleware/MeanifyUserPermission.php'),
+        ], 'meanify-laravel-permissions-middleware');
+
         //Config
         $this->publishes([
             __DIR__ . '/../Config/meanify-laravel-permissions.php' => config_path('meanify-laravel-permissions.php'),

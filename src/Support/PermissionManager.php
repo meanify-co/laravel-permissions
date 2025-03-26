@@ -72,9 +72,9 @@ class PermissionManager
     /**
      * @return mixed
      */
-    public function getClassMethodPermissionCode(): mixed
+    public function getClassMethodPermissionCode(string $class, string $method): mixed
     {
-        return $this->permissionHandler->getClassMethodPermissionCode();
+        return $this->permissionHandler->getClassMethodPermissionCode($class, $method);
     }
 
     /**
