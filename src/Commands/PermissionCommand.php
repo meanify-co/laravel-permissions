@@ -71,24 +71,24 @@ class PermissionCommand extends Command
 
             if(!File::exists($file))
             {
-                $this->warn('❌ File not entered or file not found.');
-                $this->line('Please type file from base path');
+                $this->warn('❌ File not found.');
+                $this->line('Please insert file path');
                 $file = null;
 
                 goto setImportFile;
             }
             else if(!File::isFile($file))
             {
-                $this->error('❌ File is not valid yaml.');
-                $this->line('Please type file from base path');
+                $this->warn('❌ File is not valid yaml.');
+                $this->line('Please insert file path');
                 $file = null;
 
                 goto setImportFile;
             }
             else if(File::extension($file) !== 'yaml')
             {
-                $this->error('❌ File is not valid yaml.');
-                $this->line('Please type file from base path');
+                $this->warn('❌ File is not valid yaml.');
+                $this->line('Please insert file path');
                 $file = null;
 
                 goto setImportFile;
