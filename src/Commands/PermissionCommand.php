@@ -59,7 +59,25 @@ class PermissionCommand extends Command
 
         if($action == self::$ACTION_TO_IMPORT)
         {
-            $file            = $this->option('file');
+            setImportFile:
+
+            $file = $this->option('file');
+
+            if(!$file || !File::exists($file))
+            {
+                $this->warn('❌ File not entered or file not found.');
+                $this->line('Please type file from base path');
+
+                goto setImportFile;
+            }
+            else if(File::extension($file) !== 'yaml')
+            {
+                $this->error('❌ File is not valid yaml.');
+                $this->line('Please type file from base path');
+
+                goto setImportFile;
+            }
+
             $connection      = $this->resolveConnection();
             $non_interactive = $this->option('non-interactive') ?? false;
 
