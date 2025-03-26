@@ -70,11 +70,11 @@ class PermissionManager
     }
 
     /**
-     * @return array
+     * @return mixed
      */
-    public function getPermissionsByClassMethod(): array
+    public function getClassMethodPermissionCode(): mixed
     {
-        return $this->permissionHandler->getPermissionsByClassMethod();
+        return $this->permissionHandler->getClassMethodPermissionCode();
     }
 
     /**
