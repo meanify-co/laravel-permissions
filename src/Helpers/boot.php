@@ -2,10 +2,10 @@
 
 use Meanify\LaravelPermissions\Support\PermissionManager;
 
-if (!function_exists('meanifyPermissions')) 
+if (!function_exists('meanifyPermissions'))
 {
-    function meanifyPermissions(): PermissionManager
+    function meanifyPermissions(?string $source = null, bool $throws = true): PermissionManager
     {
-        return app(PermissionManager::class);
+        return new PermissionManager($source, $throws);
     }
 }

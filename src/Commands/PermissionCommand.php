@@ -276,6 +276,11 @@ class PermissionCommand extends Command
     {
         $this->info("📄 Reading file: $yaml_file_with_permissions");
 
+        if(!$dry_run)
+        {
+            meanifyPermissions()->clearCache();
+        }
+
         $syncer = new PermissionYamlSyncerService();
         $syncer->syncFromYaml($yaml_file_with_permissions, $dry_run, $connection);
 
