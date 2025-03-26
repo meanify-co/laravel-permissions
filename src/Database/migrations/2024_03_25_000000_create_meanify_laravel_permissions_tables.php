@@ -52,6 +52,7 @@ return new class extends Migration
         \Illuminate\Support\Facades\Artisan::call('meanify:permissions', [
             '--non-interactive'  => true,
             '--sync'             => true,
+            '--action'           => 'generate',
             '--path'             => 'app/Http/Controllers',
             '--file'             => 'storage/temp/permissions-{datetime}.yaml',
             '--prefix'           => 'admin',
