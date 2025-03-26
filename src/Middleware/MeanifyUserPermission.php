@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Carbon\Carbon;
 use Closure;
 
-class MeanifyCheckIfUserHasPermission
+class MeanifyUserPermission
 {
     /**
      * Handle an incoming request.
@@ -26,12 +26,9 @@ class MeanifyCheckIfUserHasPermission
         {
             abort(500);
         }
-        else if($permission)
+        elseif(!meanifyPermissions()->forUser($user_id)->has($permission->code))
         {
-            if(!meanifyPermissions()->forUser($user_id)->has($permission->code))
-            {
-                abort(403);
-            }
+            abort(403);
         }
 
         return $next($request);
