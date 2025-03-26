@@ -50,9 +50,9 @@ class PermissionHandler
     }
 
     /**
-     * @return array
+     * @return mixed
      */
-    public function getClassMethodPermissionCode(): array
+    public function getClassMethodPermissionCode(): mixed
     {
         return Cache::store($this->cache_store)->remember(
             self::PREFIX . '.class_method_map',
