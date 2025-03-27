@@ -15,7 +15,7 @@ A PHP library to handle permissions in Laravel, designed by [Meanify](https://me
 Install the package via Composer:
 
 ```bash
-composer require meanify-co/laravel-permissions
+composer require meanify-co/laravel-permissions:dev-master
 ```
 
 ---
@@ -23,10 +23,10 @@ composer require meanify-co/laravel-permissions
 ## Publishing Configuration & Migrations
 
 ```bash
-php artisan vendor:publish --tag=meanify-permissions-config
-php artisan vendor:publish --tag=meanify-laravel-permissions-migrations
-php artisan vendor:publish --tag=meanify-laravel-permissions-models
-php artisan vendor:publish --tag=meanify-laravel-permissions-middleware
+php artisan vendor:publish --tag=meanify-config
+php artisan vendor:publish --tag=meanify-migrations
+php artisan vendor:publish --tag=meanify-models
+php artisan vendor:publish --tag=meanify-middleware
 ```
 
 Run the migrations:

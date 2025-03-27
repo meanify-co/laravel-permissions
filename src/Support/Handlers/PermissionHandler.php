@@ -4,21 +4,28 @@ namespace Meanify\LaravelPermissions\Support\Handlers;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class PermissionHandler
 {
+    protected string $application;
     protected string $source;
     protected string $cache_store;
     protected int $ttl;
-    protected const PREFIX = 'meanify_laravel_permissions';
+    protected const PREFIX = 'mfy_permissions';
 
-    public function __construct(string $source, string $cache_store, int $ttl)
+    public function __construct(string $application, string $source, string $cache_store, int $ttl)
     {
-        $this->source      = $source;
-        $this->cache_store = $cache_store;
-        $this->ttl         = $ttl;
+        $this->application             = $application;
+        $this->source                  = $source;
+        $this->cache_store             = $cache_store;
+        $this->ttl                     = $ttl;
+        $this->cache_key_classes       = self::PREFIX . "::".$application."::classes";
+        $this->cache_key_permissions   = self::PREFIX . "::".$application."::permissions_all";
+        $this->cache_key_roles         = self::PREFIX . "::".$application."::roles_all";
+        $this->logger                  = Config::get('meanify-laravel-permissions.log.active', false);
     }
 
     /**
@@ -26,12 +33,19 @@ class PermissionHandler
      */
     public function getAllPermissions(): Collection
     {
+        $this->writeLog("getting all permissions");
+
         return Cache::store($this->cache_store)->remember(
-            self::PREFIX . '.permissions.all',
+            $this->cache_key_permissions,
             $this->ttl * 60,
-            fn () => DB::connection($this->getConnection())->table('permissions')
-                ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
-                ->get()
+            function(){
+                $this->writeLog("caching all permissions");
+
+                return DB::connection($this->getConnection())->table('permissions')
+                    ->where('application', $this->application)
+                    ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
+                    ->get();
+            }
         );
     }
 
@@ -40,14 +54,50 @@ class PermissionHandler
      */
     public function getAllRoles(): Collection
     {
+        $this->writeLog("getting all roles");
+
         return Cache::store($this->cache_store)->remember(
-            self::PREFIX . '.roles.all',
+            $this->cache_key_roles,
             $this->ttl * 60,
-            fn () => DB::connection($this->getConnection())->table('roles')
-                ->when($this->hasDeletedAt('roles'), fn ($q) => $q->whereNull('deleted_at'))
-                ->get()
+            function(){
+                $this->writeLog("caching all roles");
+
+                return DB::connection($this->getConnection())->table('roles')
+                    ->where('application', $this->application)
+                    ->when($this->hasDeletedAt('roles'), fn ($q) => $q->whereNull('deleted_at'))
+                    ->get();
+            }
         );
     }
+
+    /**
+     * @return array|Collection
+     */
+    public function getAllClassesAndMethods(): array|Collection
+    {
+        $this->writeLog("getting all classes and methods");
+
+        return Cache::store($this->cache_store)->remember(
+            $this->cache_key_classes,
+            $this->ttl * 60,
+            function(){
+                $this->writeLog("caching all classes and methods");
+
+                return DB::connection($this->getConnection())->table('permissions')
+                    ->where('application', $this->application)
+                    ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
+                    ->get()
+                    ->groupBy('class')
+                    ->map(function ($items) {
+                        return $items->mapWithKeys(function ($item) {
+                            return [$item->method => $item->code];
+                        });
+                    })
+                    ->toArray();
+            }
+        );
+    }
+
 
     /**
      * @param string $class
@@ -56,28 +106,28 @@ class PermissionHandler
      */
     public function getClassMethodPermissionCode(string $class, string $method): mixed
     {
-        $cache_key = self::PREFIX . ".class_method_code.{$class}::{$method}";
+        $all = $this->getAllClassesAndMethods();
 
-        return Cache::store($this->cache_store)->remember(
-            $cache_key,
-            $this->ttl * 60,
-            function () use ($class, $method) {
-                return DB::connection($this->getConnection())
-                    ->table('permissions')
-                    ->when($this->hasDeletedAt('permissions'), fn ($q) => $q->whereNull('deleted_at'))
-                    ->where('class', $class)
-                    ->where('method', $method)
-                    ->first();
-            }
-        );
+        try
+        {
+            return $all[$class][$method];
+        }
+        catch (\Throwable $exception)
+        {
+            return null;
+        }
     }
 
     /**
      * @return void
      */
-    public function refreshClassMethodMap(): void
+    public function refreshBaseCache(): void
     {
-        Cache::store($this->cache_store)->forget(self::PREFIX . '.class_method_map');
+        $this->clearBaseCache();
+
+        $this->getAllRoles();
+        $this->getAllPermissions();
+        $this->getAllClassesAndMethods();
     }
 
     /**
@@ -85,9 +135,9 @@ class PermissionHandler
      */
     public function clearBaseCache(): void
     {
-        Cache::store($this->cache_store)->forget(self::PREFIX . '.class_method_map');
-        Cache::store($this->cache_store)->forget(self::PREFIX . '.permissions.all');
-        Cache::store($this->cache_store)->forget(self::PREFIX . '.roles.all');
+        Cache::store($this->cache_store)->forget($this->cache_key_classes);
+        Cache::store($this->cache_store)->forget($this->cache_key_permissions);
+        Cache::store($this->cache_store)->forget($this->cache_key_roles);
     }
 
     /**
@@ -105,5 +155,17 @@ class PermissionHandler
     protected function hasDeletedAt(string $table): bool
     {
         return Schema::connection($this->getConnection())->hasColumn($table, 'deleted_at');
+    }
+
+    /**
+     * @param $message
+     * @return void
+     */
+    protected function writeLog($message)
+    {
+        if($this->logger)
+        {
+            logger()->info("[Permissions::PermissionHandler][application::$this->application] $message");
+        }
     }
 }

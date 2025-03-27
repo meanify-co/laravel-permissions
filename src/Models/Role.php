@@ -41,6 +41,7 @@ class Role extends Model
      * @var string[]
      */
     protected $fillable = [
+        'application',
         'code',
         'label',
         'description',
@@ -53,6 +54,7 @@ class Role extends Model
      */
     protected $casts = [
         'id' => 'integer',
+        'super_user_role' => 'boolean',
     ];
 
     /**

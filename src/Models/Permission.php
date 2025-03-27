@@ -40,6 +40,7 @@ class Permission extends Model
      * @var string[]
      */
     protected $fillable = [
+        'application',
         'code',
         'label',
         'group',

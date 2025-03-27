@@ -22,13 +22,12 @@ class MeanifyUserPermission
 
         $permission = meanifyPermissions()->getClassMethodPermissionCode($target_class, $target_method);
 
-        if(!$permission)
+        if($permission) //If exists means that the target is handled by Laravel Permissions
         {
-            abort(500);
-        }
-        elseif(!meanifyPermissions()->forUser($user_id)->has($permission->code))
-        {
-            abort(403);
+            if(!meanifyPermissions()->forUser($user_id)->has($permission))
+            {
+                abort(403);
+            }
         }
 
         return $next($request);

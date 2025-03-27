@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('permissions', function (Blueprint $table) {
             $table->id();
-            $table->string('application')->unique();
-            $table->string('code')->unique();
+            $table->string('application')->nullable();
+            $table->string('code')->nullable();
             $table->string('label');
             $table->string('group')->nullable();
             $table->boolean('apply')->default(false);
@@ -26,9 +26,10 @@ return new class extends Migration
 
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->string('application')->unique();
-            $table->string('name')->unique();
+            $table->string('application')->nullable();
+            $table->string('name')->nullable();
             $table->string('description')->nullable();
+            $table->boolean('super_user_role')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -52,12 +53,12 @@ return new class extends Migration
 
         //Seed Admin role
         \Illuminate\Support\Facades\Artisan::call('meanify:permissions', [
-            '--non-interactive'  => true,
-            '--sync'             => true,
+            '--application'      => 'admin',
             '--action'           => 'generate',
+            '--force'            => true,
+            '--database'         => true,
             '--path'             => 'app/Http/Controllers',
             '--file'             => 'storage/temp/permissions-{datetime}.yaml',
-            '--prefix'           => 'admin',
             '--connection'       => 'mysql',
         ]);
     }

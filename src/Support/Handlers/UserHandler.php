@@ -4,29 +4,35 @@ namespace Meanify\LaravelPermissions\Support\Handlers;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class UserHandler
 {
     protected $user_id;
+    protected string $application;
     protected string $source;
     protected string $cache_store;
     protected int $ttl;
-    protected const PREFIX = 'meanify_laravel_permissions';
+    protected const PREFIX = 'mfy_permissions';
 
     /**
      * @param int|string $user_id
+     * @param string $application
      * @param string $source
      * @param string $cache_store
      * @param int $ttl
      */
-    public function __construct(int|string $user_id, string $source, string $cache_store, int $ttl)
+    public function __construct(int|string $user_id, string $application, string $source, string $cache_store, int $ttl)
     {
         $this->user_id     = $user_id;
+        $this->application = $application;
         $this->source      = $source;
         $this->cache_store = $cache_store;
         $this->ttl         = $ttl;
+        $this->cache_key   = self::PREFIX . "::".$application."::user::{$this->user_id}";
+        $this->logger      = Config::get('meanify-laravel-permissions.log.active', false);
     }
 
     /**
@@ -43,10 +49,14 @@ class UserHandler
      */
     public function permissions(): array
     {
+        $this->writeLog("getting permissions for user_id={$this->user_id}");
+
         return Cache::store($this->cache_store)->remember(
-            self::PREFIX . ".user_permissions.{$this->user_id}",
+            $this->cache_key,
             $this->ttl * 60,
             function () {
+                $this->writeLog("caching permissions for user_id={$this->user_id}");
+
                 $role_ids = DB::connection($this->getConnection())->table('users_roles')
                     ->where('user_id', $this->user_id)
                     ->pluck('role_id');
@@ -68,7 +78,17 @@ class UserHandler
      */
     public function refreshCache(): void
     {
-        Cache::store($this->cache_store)->forget(self::PREFIX . ".user_permissions.{$this->user_id}");
+        $this->clearCache();
+
+        $this->permissions();
+    }
+
+    /**
+     * @return void
+     */
+    public function clearCache(): void
+    {
+        Cache::store($this->cache_store)->forget($this->cache_key);
     }
 
     /**
@@ -86,5 +106,17 @@ class UserHandler
     protected function hasDeletedAt(string $table): bool
     {
         return Schema::connection($this->getConnection())->hasColumn($table, 'deleted_at');
+    }
+
+    /**
+     * @param $message
+     * @return void
+     */
+    protected function writeLog($message)
+    {
+        if($this->logger)
+        {
+            logger()->info("[Permissions::UserHandler][application::$this->application] $message");
+        }
     }
 }

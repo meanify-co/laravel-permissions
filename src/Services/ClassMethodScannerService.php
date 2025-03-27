@@ -12,10 +12,10 @@ class ClassMethodScannerService
 {
     /**
      * @param string $base_path
-     * @param string $prefix
+     * @param string $application
      * @return array
      */
-    public function scan(string $base_path, string $prefix = ''): array
+    public function scan(string $base_path, string $application): array
     {
         $php_files   = File::allFiles($base_path);
         $permissions = [];
@@ -55,7 +55,7 @@ class ClassMethodScannerService
                 }
 
                 $default_group = class_basename($class);
-                $default_code  = ($prefix ? "$prefix." : '') . $default_group .'.'. $method_name;
+                $default_code  = $application .'.'. $default_group .'.'. $method_name;
                 $label         = Str::headline($method_name);
                 $apply         = true;
 
@@ -89,19 +89,20 @@ class ClassMethodScannerService
                     $group = $default_group;
                 }
 
-                if (isset($permissions[$code]))
+                if (isset($permissions[$application.'::'.$code]))
                 {
                     echo "⚠️  Duplicate permission code '{$code}' found in {$class}::{$method_name}. Only the first occurrence will be kept.\n";
                     continue;
                 }
 
-                $permissions[$code] = [
-                    'code'   => $code,
-                    'label'  => $label,
-                    'group'  => $group,
-                    'class'  => $class,
-                    'method' => $method_name,
-                    'apply'  => $apply,
+                $permissions[$application.'::'.$code] = [
+                    'application'   => $application,
+                    'code'          => $code,
+                    'label'         => $label,
+                    'group'         => $group,
+                    'class'         => $class,
+                    'method'        => $method_name,
+                    'apply'         => $apply,
                 ];
             }
         }

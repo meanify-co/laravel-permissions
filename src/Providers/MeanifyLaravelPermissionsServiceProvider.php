@@ -20,19 +20,19 @@ class MeanifyLaravelPermissionsServiceProvider extends ServiceProvider
         //Middleware
         $this->publishes([
             __DIR__ . '/../../src/Middleware/MeanifyUserPermission.php' => app_path('Http/Middleware/MeanifyUserPermission.php'),
-        ], 'meanify-laravel-permissions-middleware');
+        ], 'meanify-middlewares');
 
         //Config
         $this->publishes([
             __DIR__ . '/../Config/meanify-laravel-permissions.php' => config_path('meanify-laravel-permissions.php'),
-        ], 'meanify-laravel-permissions-config');
+        ], 'meanify-configs');
 
         //Migrations
         $this->loadMigrationsFrom(__DIR__ . '/../Database/migrations');
 
         $this->publishes([
             __DIR__ . '/../Database/migrations' => database_path('migrations'),
-        ], 'meanify-laravel-permissions-migrations');
+        ], 'meanify-migrations');
 
         //Models
         $this->publishes([
@@ -40,7 +40,7 @@ class MeanifyLaravelPermissionsServiceProvider extends ServiceProvider
             __DIR__ . '/../../src/Models/Permission.php'     => app_path('Models/Permission.php'),
             __DIR__ . '/../../src/Models/UserRole.php'       => app_path('Models/UserRole.php'),
             __DIR__ . '/../../src/Models/RolePermission.php' => app_path('Models/RolePermission.php'),
-        ], 'meanify-laravel-permissions-models');
+        ], 'meanify-models');
     }
 
     /**
