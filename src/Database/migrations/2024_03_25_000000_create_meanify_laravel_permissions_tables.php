@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('permissions', function (Blueprint $table) {
             $table->id();
+            $table->string('application')->unique();
             $table->string('code')->unique();
             $table->string('label');
             $table->string('group')->nullable();
@@ -25,6 +26,7 @@ return new class extends Migration
 
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
+            $table->string('application')->unique();
             $table->string('name')->unique();
             $table->string('description')->nullable();
             $table->timestamps();
