@@ -50,7 +50,9 @@ class PermissionCommand extends Command
             $this->newLine();
             $this->table(
                 ['Application', 'Action', 'YAML file to import','Connection'],
-                [ $application, $action, $file, $connection]
+                [
+                    [ $application, $action, $file, $connection]
+                ]
             );
 
             if ($force or $this->confirm("Do you want to import permissions from file to database (connection: $connection)?", true))
