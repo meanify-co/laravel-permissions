@@ -320,12 +320,12 @@ class PermissionCommand extends Command
     {
         $this->info("📄 Reading file: $yaml_file_with_permissions");
 
-        meanifyPermissions()->clearAll();
+        meanify_permissions()->clearAll();
 
         $syncer = new PermissionYamlSyncerService();
         $syncer->syncFromYaml($yaml_file_with_permissions, $application, $connection, $super_user_role_name);
 
-        meanifyPermissions()->refreshAll();
+        meanify_permissions()->refreshAll();
 
         $this->info('✅ Permissions synchronized with the database.');
     }

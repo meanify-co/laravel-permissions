@@ -28,8 +28,6 @@ class MeanifyLaravelPermissionsServiceProvider extends ServiceProvider
         ], 'meanify-configs');
 
         //Migrations
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/migrations');
-
         $this->publishes([
             __DIR__ . '/../Database/migrations' => database_path('migrations'),
         ], 'meanify-migrations');
